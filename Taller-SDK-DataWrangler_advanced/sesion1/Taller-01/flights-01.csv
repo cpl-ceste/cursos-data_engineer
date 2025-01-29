@@ -1,0 +1,5 @@
+flight_number,origin,destination,date,capacity
+AA101,NYC,LAX,2024-12-01,200
+AA102,LAX,CHI,2024-12-01,180
+AA103,NYC,CHI,2024-12-02,150
+AA104,LAX,NYC,2024-12-02,120
