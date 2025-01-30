@@ -1,0 +1,875 @@
+Parameters:
+  Environment:
+    Type: String
+    Default: development
+    Description: Environment for the VPC (e.g., development, production).
+  Infrastructure:
+    Type: String
+    Default: Cloudformation
+    Description: Infrastructure management.
+  Project:
+    Type: String
+    Default: power
+    Description: Name of the project.
+  AwsAccount:
+    Type: String
+    Default: 242286953629
+    Description: Account number AWS.
+  LabRole:
+    Type: String
+    Default: arn:aws:iam::242286953629:role/LabRole
+    Description: Role ARN
+  BucketName01:
+    Type: String
+    Default: s3-training-activity-ver01-idcgv-25
+    Description: Bucket name
+  BucketName02:
+    Type: String
+    Default: s3-training-activity-ver02-idcgv-25
+    Description: Bucket name
+  BucketName03:
+    Type: String
+    Default: s3-training-activity-ver03-idcgv-25
+    Description: Bucket name
+
+Resources:
+  # VPC
+  VPCPowerBI:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.29.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: vpc-learner-lab
+        - Key: Resource
+          Value: vpc
+
+  # Subnets VPC
+  SubnetVpcPubA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCPowerBI
+      CidrBlock: 172.29.1.0/24
+      AvailabilityZone: us-east-1a
+      AssignIpv6AddressOnCreation: false
+      EnableDns64: false
+      MapPublicIpOnLaunch: true
+      Ipv6Native: false
+      MapPublicIpOnLaunch: false
+      PrivateDnsNameOptionsOnLaunch:
+        EnableResourceNameDnsAAAARecord: false
+        EnableResourceNameDnsARecord: false
+        HostnameType: "ip-name"
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: subnet-learner-lab-public-us-east-1a
+        - Key: Resource
+          Value: subnet
+  SubnetVpcPubB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCPowerBI
+      CidrBlock: 172.29.2.0/24
+      AvailabilityZone: us-east-1a
+      AssignIpv6AddressOnCreation: false
+      EnableDns64: false
+      MapPublicIpOnLaunch: true
+      Ipv6Native: false
+      MapPublicIpOnLaunch: false
+      PrivateDnsNameOptionsOnLaunch:
+        EnableResourceNameDnsAAAARecord: false
+        EnableResourceNameDnsARecord: false
+        HostnameType: "ip-name"
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: subnet-learner-lab-public-us-east-1b
+        - Key: Resource
+          Value: subnet
+  SubnetVpcPrvA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCPowerBI
+      CidrBlock: 172.29.101.0/24
+      AvailabilityZone: us-east-1a
+      AssignIpv6AddressOnCreation: false
+      EnableDns64: false
+      MapPublicIpOnLaunch: true
+      Ipv6Native: false
+      MapPublicIpOnLaunch: false
+      PrivateDnsNameOptionsOnLaunch:
+        EnableResourceNameDnsAAAARecord: false
+        EnableResourceNameDnsARecord: false
+        HostnameType: "ip-name"
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: subnet-learner-lab-private-us-east-1a
+        - Key: Resource
+          Value: subnet
+  SubnetVpcPrvB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCPowerBI
+      CidrBlock: 172.29.102.0/24
+      AvailabilityZone: us-east-1a
+      AssignIpv6AddressOnCreation: false
+      EnableDns64: false
+      MapPublicIpOnLaunch: true
+      Ipv6Native: false
+      MapPublicIpOnLaunch: false
+      PrivateDnsNameOptionsOnLaunch:
+        EnableResourceNameDnsAAAARecord: false
+        EnableResourceNameDnsARecord: false
+        HostnameType: "ip-name"
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: subnet-learner-lab-private-us-east-1b
+        - Key: Resource
+          Value: subnet
+
+  # NACL Network: Subnets VPC associations
+  SubnetAclAssociationA:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !GetAtt VPCPowerBI.DefaultNetworkAcl
+      SubnetId: !Ref SubnetVpcPrvA
+
+  SubnetAclAssociationB:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !GetAtt VPCPowerBI.DefaultNetworkAcl
+      SubnetId: !Ref SubnetVpcPrvB
+
+  SubnetAclAssociationPubA:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !GetAtt VPCPowerBI.DefaultNetworkAcl
+      SubnetId: !Ref SubnetVpcPubA
+
+  SubnetAclAssociationPubB:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !GetAtt VPCPowerBI.DefaultNetworkAcl
+      SubnetId: !Ref SubnetVpcPubB
+
+  # ACL Network: Ingress Rules
+  DefaultNetworkAclIngressRule1:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !GetAtt VPCPowerBI.DefaultNetworkAcl
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      Egress: false
+      CidrBlock: 0.0.0.0/0
+
+  DefaultNetworkAclIngressRule2:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !GetAtt VPCPowerBI.DefaultNetworkAcl
+      RuleNumber: 101
+      Protocol: -1
+      RuleAction: allow
+      Egress: false
+      Ipv6CidrBlock: ::/0
+
+  # ACL Network: Egress Rules
+  DefaultNetworkAclEgressRule1:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !GetAtt VPCPowerBI.DefaultNetworkAcl
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 0.0.0.0/0
+
+  DefaultNetworkAclEgressRule2:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !GetAtt VPCPowerBI.DefaultNetworkAcl
+      RuleNumber: 101
+      Protocol: -1
+      RuleAction: allow
+      Egress: true
+      Ipv6CidrBlock: ::/0
+
+ # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: vpc-igw-learner-lab
+
+  # Attachment of Internet Gateway to VPC
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPCPowerBI
+      InternetGatewayId: !Ref InternetGateway
+
+  # Elastic IP
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Resource
+          Value: vpc-eip-learner-lab-us-east-1a
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt ElasticIP.AllocationId
+      ConnectivityType: public
+      SubnetId: !Ref SubnetVpcPubA
+      PrivateIpAddress: 172.29.1.100
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: vpc-nat-learner-lab
+
+  DefaultSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt VPCPowerBI.DefaultSecurityGroup
+      Description: Security Group Ingress for VPC
+      CidrIp: 0.0.0.0/0
+      FromPort: 0
+      IpProtocol: -1
+      ToPort: 0
+
+  DefaultSecurityGroupEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt VPCPowerBI.DefaultSecurityGroup
+      Description: Security Group Egress for VPC
+      CidrIp: 0.0.0.0/0
+      FromPort: 0
+      IpProtocol: -1
+      ToPort: 0
+
+  # Route tables
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCPowerBI
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: vpc-rt-learner-lab-private
+
+  PrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCPowerBI
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: vpc-rt-learner-lab-public
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PrivateSubnetAAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref SubnetVpcPrvA
+
+  PrivateSubnetBAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref SubnetVpcPrvB
+
+  PublicSubnetAAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref SubnetVpcPubA
+
+  PublicSubnetBAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref SubnetVpcPubB
+  
+  # Buckets S3
+  S3BucketAct01:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName01
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Resource
+          Value: s3-learner-lab
+
+  S3BucketAct02:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName02
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Resource
+          Value: s3-learner-lab
+
+  S3BucketAct03:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName03
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Resource
+          Value: s3-learner-lab
+
+  # Redshift Subnet Group
+  RedshiftSubnetGroup:
+    Type: AWS::Redshift::ClusterSubnetGroup
+    Properties:
+      Description: "Managed by CloudFormation"
+      SubnetIds:
+        - !Ref SubnetVpcPrvA
+        - !Ref SubnetVpcPrvB
+      Tags:
+        - Key: Project
+          Value: !Ref Project
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Mode
+          Value: "private"
+        - Key: Name
+          Value: !Sub "vpc-sub-gr-redshift-learner-lab-${AWS::Region}a"
+
+  # Redshift Parameter Group
+  RedshiftParameterGroup:
+    Type: AWS::Redshift::ClusterParameterGroup
+    Properties:
+      Description: "Managed by CloudFormation"
+      ParameterGroupFamily: "redshift-1.0"
+      Parameters:
+        - ParameterName: "enable_user_activity_logging"
+          ParameterValue: "true"
+      Tags:
+        - Key: Project
+          Value: !Ref Project
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: !Sub "redshift-pg-learner-lab-${AWS::Region}a"
+
+  # Security Group for Redshift
+  RedshiftSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow all inbound traffic for Redshift"
+      VpcId: !Ref VPCPowerBI
+      SecurityGroupEgress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "-1"
+        - CidrIp: !GetAtt VPCPowerBI.CidrBlock
+          FromPort: 5439
+          ToPort: 5439
+          IpProtocol: "tcp"
+          Description: "Redshift/Postgresql port"
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: Name
+          Value: "vpc-sg-redshift-learner-lab"
+
+  ClusterRedshift:
+    Type: "AWS::Redshift::Cluster"
+    Properties:
+      ClusterIdentifier: cluster-redshift-learner-lab
+      DBName: "dev"
+      Port: 5439
+      PubliclyAccessible: true
+      Encrypted: true
+      AutomatedSnapshotRetentionPeriod: 1
+      ClusterParameterGroupName: !Ref RedshiftParameterGroup
+      ClusterSubnetGroupName: !Ref RedshiftSubnetGroup
+      VpcSecurityGroupIds: 
+        - !Ref RedshiftSecurityGroup
+      NodeType: "dc2.large"
+      ClusterType: "single-node"
+      MasterUsername: admin
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:cluster-redshift-learner-lab-credentials02:SecretString:password}}'  # Referencia al secreto con la contraseña
+      EnhancedVpcRouting: false
+      MaintenanceTrackName: current
+      NumberOfNodes: 1
+      PreferredMaintenanceWindow: "sun:06:30-sun:08:30"
+      IamRoles: 
+      - arn:aws:iam::242286953629:role/LabRole
+      Tags:
+        - Key: Name
+          Value: redshift-lab
+
+  RedshiftSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: cluster-redshift-learner-lab-credentials02
+      Description: "Credentials of cluster Redshift for project Lab"
+      GenerateSecretString:
+        SecretStringTemplate: !Sub |
+          {
+            "username": "admin",
+            "dbname": "dev",
+            "engine": "redshift",
+            "port": "5439"
+          }
+        GenerateStringKey: "password"
+        PasswordLength: 30
+        ExcludeCharacters: "\"@/\\' "
+        ExcludeNumbers: false
+        ExcludeUppercase: false
+        ExcludeLowercase: false
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: !Ref Infrastructure
+        - Key: SecretName
+          Value: cluster-redshift-learner-lab-credentials02
+        - Key: Name
+          Value: "secretmanager-learner-lab"
+        - Key: Redshift
+          Value: cluster-redshift-learner-lab
+
+  # Actualización del secreto para incluir el host del clúster
+  RedshiftSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref RedshiftSecret
+      TargetType: AWS::Redshift::Cluster
+      TargetId: !Ref ClusterRedshift
+
+  JobGlueSpark:
+    Type: AWS::Glue::Job
+    Properties:
+      Description: Load and execution data exercise
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub "s3://${BucketName01}/scripts/glue-job-training-activity-01.py"
+        PythonVersion: 3
+      DefaultArguments:
+        "--JOB_NAME": GlueJobFlightsAnalysis
+        "--TempDir": !Sub "s3://${BucketName01}/temp/"
+        "--enable-metrics": true
+        "--S3_FLIGHTS_PATH": !Sub  "s3://${BucketName01}/flights-01.csv"
+        "--S3_PASSENGERS_PATH": !Sub  "s3://${BucketName01}/passengers-02.csv"
+        "--REDSHIFT_CLUSTER": cluster-redshift-learner-lab
+        "--REDSHIFT_DATABASE": "dev"
+        "--REDSHIFT_USER": "admin"
+        "--REDSHIFT_PASSWORD": !Sub '{{resolve:secretsmanager:cluster-redshift-learner-lab-credentials02:SecretString:password}}'
+        "--REDSHIFT_TMP_DIR": !Sub "s3://${BucketName01}/redshift_temp/"
+        "--REDSHIFT_TABLE": "flights_analysis_glue"
+        "--REDSHIFT_ENDPOINT": !GetAtt ClusterRedshift.Endpoint.Address
+      ExecutionProperty:
+        MaxConcurrentRuns: 2
+      Name: glue-job-training
+      Role: !Ref LabRole
+      GlueVersion: "2.0"
+      MaxRetries: 0
+      Timeout: 2880
+      WorkerType: G.1X
+      NumberOfWorkers: 2
+
+  LambdaFunctionLab01:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: fn-training-activity-01
+      Architectures:
+        - arm64
+      Handler: index.lambda_handler
+      Runtime: python3.10
+      Timeout: 240
+      EphemeralStorage: 
+        Size: 512
+      MemorySize: 1024
+      Role: !Ref LabRole
+      Layers:
+        - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python310-Arm64:22
+      Tags:
+        - Key: Name
+          Value: lambda-fn-training-activity-01
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref BucketName01
+          FLIGHTS_KEY: flights-01.csv
+          PASSENGERS_KEY: passengers-02 
+          REDSHIFT_CLUSTER: cluster-redshift-learner-lab
+          REDSHIFT_DATABASE: dev
+          REDSHIFT_USER: admin
+          REDSHIFT_PASSWORD: !Sub '{{resolve:secretsmanager:cluster-redshift-learner-lab-credentials02:SecretString:password}}'
+          REDSHIFT_TABLE: flights_analysis
+          REDSHIFT_SCHEMA: public
+          REDSHIFT_SECRET_NAME: !GetAtt RedshiftSecret.Id
+          IAM_ROLE: !Ref LabRole
+      VpcConfig:
+        Ipv6AllowedForDualStack: false
+        SecurityGroupIds: 
+          - !GetAtt VPCPowerBI.DefaultSecurityGroup
+        SubnetIds: 
+          - !Ref SubnetVpcPrvA
+          - !Ref SubnetVpcPrvB
+      Code:
+        ZipFile: |
+          import os
+          import json
+          import pandas as pd
+          import awswrangler as wr
+
+          # Variables de entorno
+          S3_BUCKET = os.environ["S3_BUCKET"]
+          FLIGHTS_KEY = os.environ["FLIGHTS_KEY"]
+          PASSENGERS_KEY = os.environ["PASSENGERS_KEY"]
+          REDSHIFT_CLUSTER = os.environ["REDSHIFT_CLUSTER"]
+          REDSHIFT_DATABASE = os.environ["REDSHIFT_DATABASE"]
+          REDSHIFT_USER = os.environ["REDSHIFT_USER"]
+          REDSHIFT_PASSWORD = os.environ["REDSHIFT_PASSWORD"]
+          REDSHIFT_TABLE = os.environ["REDSHIFT_TABLE"]
+          REDSHIFT_SCHEMA = os.environ.get("REDSHIFT_SCHEMA", "public")
+
+
+          def lambda_handler(event, context):
+              try:
+                  flights_path = f"s3://{S3_BUCKET}/{FLIGHTS_KEY}"
+                  passengers_path = f"s3://{S3_BUCKET}/{PASSENGERS_KEY}"
+
+                  flights_df = wr.s3.read_csv(flights_path)
+                  passengers_df = wr.s3.read_csv(passengers_path)
+
+                  merged_df = pd.merge(
+                      flights_df,
+                      passengers_df.groupby("flight_number")
+                      .size()
+                      .reset_index(name="passenger_count"),
+                      on="flight_number",
+                  )
+                  merged_df["occupancy_rate"] = (
+                      merged_df["passenger_count"] / merged_df["capacity"]
+                  ).fillna(0) * 100
+
+                  print(merged_df)
+
+                  con = wr.redshift.connect_temp(
+                      cluster_identifier=REDSHIFT_CLUSTER,
+                      database=REDSHIFT_DATABASE,
+                      user=REDSHIFT_USER,
+                  )
+
+                  wr.redshift.copy(
+                      df=merged_df,
+                      path=f"s3://{S3_BUCKET}/processed/temp",
+                      con=con,
+                      schema=REDSHIFT_SCHEMA,
+                      table=REDSHIFT_TABLE,
+                      iam_role=os.environ["IAM_ROLE"],
+                      mode="append",
+                  )
+
+                  return {
+                      "statusCode": 200,
+                      "body": json.dumps(
+                          {"message": "Proceso completado", "rows_inserted": len(merged_df)}
+                      ),
+                  }
+
+              except Exception as e:
+                  return {
+                      "statusCode": 500,
+                      "body": json.dumps({"message": "Error", "error": str(e)}),
+                  }
+
+
+  LambdaFunctionLab02:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: fn-training-activity-021
+      Architectures: 
+        - arm64
+      Handler: index.lambda_handler
+      Runtime: python3.10
+      Timeout: 120
+      EphemeralStorage:
+        Size: 512
+      MemorySize: 1024
+      Role: !Ref LabRole
+      Layers:
+        - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python310-Arm64:22
+      Tags:
+        - Key: Name
+          Value: lambda-fn-training-activity-02
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref S3BucketAct02
+          FLIGHTS_KEY: flights-01.csv
+          FEEDBACK_KEY: feedback-02.csv
+          REDSHIFT_CLUSTER: cluster-redshift-learner-lab
+          REDSHIFT_DATABASE: dev
+          REDSHIFT_USER: admin
+          REDSHIFT_PASSWORD: !Sub '{{resolve:secretsmanager:cluster-redshift-learner-lab-credentials02:SecretString:password}}'
+          REDSHIFT_TABLE: flights_analysis
+          REDSHIFT_SCHEMA: public
+          REDSHIFT_SECRET_NAME: !Ref RedshiftSecret
+          MAX_RETRIES: 30
+          RETRY_DELAY: 30
+          S3_BUCKET_TARGET: !Ref S3BucketAct03
+          IAM_ROLE: !Ref LabRole
+      VpcConfig:
+        Ipv6AllowedForDualStack: false
+        SecurityGroupIds: 
+          - !GetAtt VPCPowerBI.DefaultSecurityGroup
+        SubnetIds: 
+          - !Ref SubnetVpcPrvA
+          - !Ref SubnetVpcPrvB
+      Code:
+        ZipFile: |
+          import os
+          import time
+          import boto3
+          import pandas as pd
+          import awswrangler as wr
+
+          # Variables de entorno
+          S3_BUCKET = os.environ["S3_BUCKET"]
+          FLIGHTS_KEY = os.environ["FLIGHTS_KEY"]
+          FEEDBACK_KEY = os.environ["FEEDBACK_KEY"]
+          REDSHIFT_CLUSTER = os.environ["REDSHIFT_CLUSTER"]
+          REDSHIFT_DATABASE = os.environ["REDSHIFT_DATABASE"]
+          REDSHIFT_USER = os.environ["REDSHIFT_USER"]
+          REDSHIFT_PASSWORD = os.environ["REDSHIFT_PASSWORD"]
+          REDSHIFT_TABLE = os.environ["REDSHIFT_TABLE"]
+          REDSHIFT_SCHEMA = os.environ.get("REDSHIFT_SCHEMA", "public")
+          MAX_RETRIES = int(os.environ.get("MAX_RETRIES", 10))
+          RETRY_DELAY = int(os.environ.get("RETRY_DELAY", 10))
+          S3_BUCKET_TARGET = os.environ["S3_BUCKET_TARGET"]
+
+
+          def wait_for_files(s3_client, bucket, keys, max_retries, retry_delay):
+              """
+              Espera hasta que los archivos especificados existan en el bucket de S3.
+              """
+              retries = 0
+              while retries < max_retries:
+                  existing_files = [
+                      key for key in keys if check_file_exists(s3_client, bucket, key)
+                  ]
+                  if len(existing_files) == len(keys):
+                      print("Todos los archivos están disponibles.")
+                      return True
+                  print(
+                      f"Archivos faltantes: {set(keys) - set(existing_files)}. Reintento {retries + 1}/{max_retries}..."
+                  )
+                  retries += 1
+                  time.sleep(retry_delay)
+              print("Tiempo de espera agotado. No se encontraron todos los archivos.")
+              return False
+
+
+          def check_file_exists(s3_client, bucket, key):
+              """
+              Verifica si un archivo existe en un bucket de S3.
+              """
+              try:
+                  s3_client.head_object(Bucket=bucket, Key=key)
+                  return True
+              except s3_client.exceptions.ClientError as e:
+                  if e.response["Error"]["Code"] == "404":
+                      return False
+
+
+          def lambda_handler(event, context):
+              s3_client = boto3.client("s3")
+
+              # Esperar a que los archivos existan
+              keys = [FLIGHTS_KEY, FEEDBACK_KEY]
+              if not wait_for_files(s3_client, S3_BUCKET, keys, MAX_RETRIES, RETRY_DELAY):
+                  return {
+                      "statusCode": 404,
+                      "body": "Archivos faltantes en S3. No se pudo completar el proceso",
+                  }
+
+              try:
+                  # Rutas de los archivos
+                  flights_path = f"s3://{S3_BUCKET}/{FLIGHTS_KEY}"
+                  feedback_path = f"s3://{S3_BUCKET}/{FEEDBACK_KEY}"
+
+                  # Leer datos desde S3
+                  flights_df = wr.s3.read_csv(flights_path)
+                  feedback_df = wr.s3.read_csv(feedback_path)
+
+                  # Calcular retraso promedio y calificación promedio
+                  delay_avg = (
+                      flights_df.groupby("flight_number")["delay_minutes"]
+                      .mean()
+                      .reset_index(name="average_delay")
+                  )
+                  rating_avg = (
+                      feedback_df.groupby("flight_number")["rating"]
+                      .mean()
+                      .reset_index(name="average_rating")
+                  )
+
+                  # Combinar métricas
+                  merged_df = pd.merge(flights_df, delay_avg, on="flight_number", how="left")
+                  merged_df = pd.merge(merged_df, rating_avg, on="flight_number", how="left")
+
+                  con = wr.redshift.connect_temp(
+                      cluster_identifier=REDSHIFT_CLUSTER, database="dev", user="awsuser"
+                  )
+
+                  wr.redshift.copy(
+                      df=merged_df,
+                      path=f"s3://{S3_BUCKET}/processed/temp",
+                      con=con,
+                      schema=REDSHIFT_SCHEMA,
+                      table=REDSHIFT_TABLE,
+                      iam_role=os.environ["IAM_ROLE"],
+                      mode="overwrite",
+                  )
+
+                  return {
+                      "statusCode": 200,
+                      "body": "Archivos procesados exitosamente. Datos combinados generados.",
+                  }
+              except Exception as e:
+                  return {"statusCode": 500, "body": f"Error durante el procesamiento: {str(e)}"}
+
+  GlueDatabase:
+    Type: "AWS::Glue::Database"
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: "db-training-metadata-redshift"
+        Description: "Base de datos Glue para metadata conectada con Redshift"
+
+  GlueRedshiftConnection:
+    Type: "AWS::Glue::Connection"
+    Properties:
+      ConnectionInput:
+        Name: "redshift-glue-connection"
+        ConnectionType: "JDBC"
+        ConnectionProperties:
+          JDBC_CONNECTION_URL: !Sub "jdbc:redshift://${ClusterRedshift.Endpoint.Address}:5439/dev"
+          PASSWORD: !Sub '{{resolve:secretsmanager:cluster-redshift-learner-lab-credentials02:SecretString:password}}'
+          USERNAME: !Sub '{{resolve:secretsmanager:cluster-redshift-learner-lab-credentials02:SecretString:username}}'
+      CatalogId: !Ref AWS::AccountId
+
+  GlueCrawler:
+    Type: "AWS::Glue::Crawler"
+    Properties:
+      Name: "redshift-glue-crawler"
+      Role: !Ref LabRole
+      DatabaseName: !Ref GlueDatabase
+      Targets:
+        JdbcTargets:
+          - ConnectionName: !Ref GlueRedshiftConnection
+            Path: !Sub "dev/%" 
+      SchemaChangePolicy:
+        UpdateBehavior: "UPDATE_IN_DATABASE"
+        DeleteBehavior: "DEPRECATE_IN_DATABASE"
+
+
+Outputs:
+  S3BucketAct01Name:
+    Description: "The name of the S3 bucket."
+    Value: !Ref S3BucketAct01
+
+  S3BucketAct01Arn:
+    Description: "The ARN of the S3 bucket."
+    Value: !GetAtt S3BucketAct01.Arn
+
+  S3BucketAct02Name:
+    Description: "The name of the S3 bucket."
+    Value: !Ref S3BucketAct02
+
+  S3BucketAct02Arn:
+    Description: "The ARN of the S3 bucket."
+    Value: !GetAtt S3BucketAct02.Arn
+
+  S3BucketAct03Name:
+    Description: "The name of the S3 bucket."
+    Value: !Ref S3BucketAct03
+
+  S3BucketAct03Arn:
+    Description: "The ARN of the S3 bucket."
+    Value: !GetAtt S3BucketAct03.Arn
+
+  LabClusterRedshiftEndpoint:
+    Description: "Endpoint cluster redshshift"
+    Value: !GetAtt ClusterRedshift.Endpoint.Address
+
+  RedshiftSecretCredentials:
+    Description: "Secret automatic cluster redshshift"
+    Value: !GetAtt RedshiftSecret.Id
