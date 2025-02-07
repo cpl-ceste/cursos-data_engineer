@@ -17,19 +17,19 @@ Parameters:
     Description: Account number AWS.
   LabRole:
     Type: String
-    Default: arn:aws:iam::242286953629:role/LabRole
+    Default: YOUR ROLE
     Description: Role ARN
   BucketName01:
     Type: String
-    Default: s3-training-activity-ver01-idcgv-25
+    Default: s3-training-activity-ver01-cpl
     Description: Bucket name
   BucketName02:
     Type: String
-    Default: s3-training-activity-ver02-idcgv-25
+    Default: s3-training-activity-ver02-cpl
     Description: Bucket name
   BucketName03:
     Type: String
-    Default: s3-training-activity-ver03-idcgv-25
+    Default: s3-training-activity-ver03-cpl
     Description: Bucket name
 
 Resources:
@@ -62,7 +62,7 @@ Resources:
       EnableDns64: false
       MapPublicIpOnLaunch: true
       Ipv6Native: false
-      MapPublicIpOnLaunch: false
+      #MapPublicIpOnLaunch: false
       PrivateDnsNameOptionsOnLaunch:
         EnableResourceNameDnsAAAARecord: false
         EnableResourceNameDnsARecord: false
@@ -86,7 +86,7 @@ Resources:
       EnableDns64: false
       MapPublicIpOnLaunch: true
       Ipv6Native: false
-      MapPublicIpOnLaunch: false
+      #MapPublicIpOnLaunch: false
       PrivateDnsNameOptionsOnLaunch:
         EnableResourceNameDnsAAAARecord: false
         EnableResourceNameDnsARecord: false
@@ -110,7 +110,7 @@ Resources:
       EnableDns64: false
       MapPublicIpOnLaunch: true
       Ipv6Native: false
-      MapPublicIpOnLaunch: false
+      #MapPublicIpOnLaunch: false
       PrivateDnsNameOptionsOnLaunch:
         EnableResourceNameDnsAAAARecord: false
         EnableResourceNameDnsARecord: false
@@ -134,7 +134,7 @@ Resources:
       EnableDns64: false
       MapPublicIpOnLaunch: true
       Ipv6Native: false
-      MapPublicIpOnLaunch: false
+      #MapPublicIpOnLaunch: false
       PrivateDnsNameOptionsOnLaunch:
         EnableResourceNameDnsAAAARecord: false
         EnableResourceNameDnsARecord: false
@@ -469,7 +469,7 @@ Resources:
       NumberOfNodes: 1
       PreferredMaintenanceWindow: "sun:06:30-sun:08:30"
       IamRoles: 
-      - arn:aws:iam::242286953629:role/LabRole
+      - !Ref LabRole
       Tags:
         - Key: Name
           Value: redshift-lab
