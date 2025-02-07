@@ -17,7 +17,7 @@ Parameters:
     Description: Account number AWS.
   LabRole:
     Type: String
-    Default: YOUR ROLE
+    Default: Your LabRole
     Description: Role ARN
   BucketName01:
     Type: String
