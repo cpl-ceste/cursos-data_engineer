@@ -102,6 +102,13 @@ def lambda_handler(event, context):
             mode="overwrite",
         )
 
+        # Guardar en S3 el merged_df en formato CSV
+        wr.s3.to_csv(
+            df=merged_df,
+            path=f"s3://{S3_BUCKET_TARGET}/staging/flight_feedback_summary_lab.csv",
+            index=False
+        )
+
         return {
             "statusCode": 200,
             "body": "Archivos procesados exitosamente. Datos combinados generados.",
