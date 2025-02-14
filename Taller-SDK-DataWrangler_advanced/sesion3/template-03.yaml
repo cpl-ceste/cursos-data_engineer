@@ -1,0 +1,376 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Template integral con VPC, Lambdas, Redshift, y Step Functions (usando Fn::Sub y LabRole para la State Machine)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: development
+    Description: Environment for the VPC (e.g., development, production).
+  Infrastructure:
+    Type: String
+    Default: Cloudformation
+    Description: Infrastructure management.
+  Project:
+    Type: String
+    Default: power
+    Description: Name of the project.
+  AwsAccount:
+    Type: String
+    Default: 247822970785
+    Description: Account number AWS.
+  LabRole:
+    Type: String
+    Default: arn:aws:iam::247822970785:role/LabRole
+    Description: ARN del Role existente en el lab (se reutiliza en Lambdas y Step Functions).
+  BucketName01:
+    Type: String
+    Default: s3-training-activity-01-dc
+    Description: Bucket name
+  BucketName02:
+    Type: String
+    Default: s3-training-activity-02-dc
+    Description: Bucket name
+  BucketName03:
+    Type: String
+    Default: s3-training-activity-03-dc
+    Description: Bucket name
+
+Resources:
+  # --------------------------------------------------------------------------
+  # 1) VPC, Subnets, NAT Gateway, Routes (Ejemplo simplificado)
+  # --------------------------------------------------------------------------
+  VPCPowerBI:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.29.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: vpc-learner-lab
+
+  SubnetVpcPubA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCPowerBI
+      CidrBlock: 172.29.1.0/24
+      AvailabilityZone: us-east-1a
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: subnet-public-a
+
+  SubnetVpcPrvA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCPowerBI
+      CidrBlock: 172.29.101.0/24
+      AvailabilityZone: us-east-1a
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: subnet-private-a
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: igw-lab
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPCPowerBI
+      InternetGatewayId: !Ref InternetGateway
+
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt ElasticIP.AllocationId
+      SubnetId: !Ref SubnetVpcPubA
+
+  # --------------------------------------------------------------------------
+  # 2) S3 Buckets
+  # --------------------------------------------------------------------------
+  S3BucketAct01:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName01
+
+  S3BucketAct02:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName02
+
+  S3BucketAct03:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName03
+
+  # --------------------------------------------------------------------------
+  # 3) Redshift (SubnetGroup, ParamGroup, SecurityGroup, Cluster, Secret)
+  # --------------------------------------------------------------------------
+  RedshiftSubnetGroup:
+    Type: AWS::Redshift::ClusterSubnetGroup
+    Properties:
+      Description: "Managed by CloudFormation"
+      SubnetIds:
+        - !Ref SubnetVpcPrvA
+      Tags:
+        - Key: Name
+          Value: redshift-subnet-group-lab
+
+  RedshiftParameterGroup:
+    Type: AWS::Redshift::ClusterParameterGroup
+    Properties:
+      Description: "Managed by CloudFormation"
+      ParameterGroupFamily: "redshift-1.0"
+      Parameters:
+        - ParameterName: "enable_user_activity_logging"
+          ParameterValue: "true"
+      Tags:
+        - Key: Name
+          Value: redshift-param-group-lab
+
+  RedshiftSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow inbound for Redshift"
+      VpcId: !Ref VPCPowerBI
+      SecurityGroupEgress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "-1"
+        - CidrIp: !GetAtt VPCPowerBI.CidrBlock
+          IpProtocol: "tcp"
+          FromPort: 5439
+          ToPort: 5439
+
+  ClusterRedshift:
+    Type: AWS::Redshift::Cluster
+    Properties:
+      ClusterIdentifier: cluster-redshift-learner-lab
+      DBName: "dev"
+      Port: 5439
+      PubliclyAccessible: true
+      Encrypted: true
+      ClusterParameterGroupName: !Ref RedshiftParameterGroup
+      ClusterSubnetGroupName: !Ref RedshiftSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref RedshiftSecurityGroup
+      NodeType: "dc2.large"
+      ClusterType: "single-node"
+      MasterUsername: admin
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:cluster-redshift-learner-lab-credentials02:SecretString:password}}'
+      IamRoles:
+        - !Ref LabRole
+
+  RedshiftSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: cluster-redshift-learner-lab-credentials02
+      Description: "Credentials of cluster Redshift for project Lab"
+      GenerateSecretString:
+        SecretStringTemplate: !Sub |
+          {
+            "username": "admin",
+            "dbname": "dev",
+            "engine": "redshift",
+            "port": "5439"
+          }
+        GenerateStringKey: "password"
+        PasswordLength: 30
+        ExcludeCharacters: "\"@/\\' "
+        ExcludeNumbers: false
+        ExcludeUppercase: false
+        ExcludeLowercase: false
+
+  RedshiftSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref RedshiftSecret
+      TargetType: AWS::Redshift::Cluster
+      TargetId: !Ref ClusterRedshift
+
+  # --------------------------------------------------------------------------
+  # 4) AWS Glue (Database, Connection, Crawler, Job) - ejemplo reducido
+  # --------------------------------------------------------------------------
+  GlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: "db-training-metadata-redshift"
+
+  GlueRedshiftConnection:
+    Type: AWS::Glue::Connection
+    Properties:
+      ConnectionInput:
+        Name: "redshift-glue-connection"
+        ConnectionType: "JDBC"
+        ConnectionProperties:
+          JDBC_CONNECTION_URL: !Sub "jdbc:redshift://${ClusterRedshift.Endpoint.Address}:5439/dev"
+          PASSWORD: !Sub '{{resolve:secretsmanager:cluster-redshift-learner-lab-credentials02:SecretString:password}}'
+          USERNAME: !Sub '{{resolve:secretsmanager:cluster-redshift-learner-lab-credentials02:SecretString:username}}'
+      CatalogId: !Ref AWS::AccountId
+
+  GlueCrawler:
+    Type: "AWS::Glue::Crawler"
+    Properties:
+      Name: "redshift-glue-crawler"
+      Role: !Ref LabRole
+      DatabaseName: !Ref GlueDatabase
+      Targets:
+        JdbcTargets:
+          - ConnectionName: !Ref GlueRedshiftConnection
+            Path: !Sub "dev/%"
+
+  JobGlueSpark:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: glue-job-training
+      Role: !Ref LabRole
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub "s3://${BucketName01}/scripts/glue-job-training-activity-01.py"
+
+  # --------------------------------------------------------------------------
+  # 5) Lambda Functions (ejemplo reducido de código)
+  # --------------------------------------------------------------------------
+  LambdaFunctionLab01:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: fn-training-activity-01
+      Runtime: python3.10
+      Handler: index.lambda_handler
+      Role: !Ref LabRole
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return "Lab01 executed"
+
+  LambdaFunctionLab02:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: fn-training-activity-02
+      Runtime: python3.10
+      Handler: index.lambda_handler
+      Role: !Ref LabRole
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return "Lab02 executed"
+
+  LambdaFunctionLab03:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: fn-training-activity-03
+      Runtime: python3.10
+      Handler: index.lambda_handler
+      Role: !Ref LabRole
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return "Lab03 executed"
+
+  # --------------------------------------------------------------------------
+  # 6) Step Functions State Machine (USANDO LabRole directamente)
+  # --------------------------------------------------------------------------
+  # Se elimina la creación de AWS::IAM::Role para Step Functions,
+  # y se usa "RoleArn: !Ref LabRole" directamente.
+  StepFunctionStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    DependsOn:
+      - LambdaFunctionLab01
+      - LambdaFunctionLab02
+      - LambdaFunctionLab03
+    Properties:
+      StateMachineName: "AirlineProcessingWorkflow"
+      RoleArn: !Ref LabRole  # Se reutiliza el mismo rol del lab
+      DefinitionString:
+        Fn::Sub:
+          - |
+            {
+              "Comment": "Pipeline de datos de vuelos - Orquestado con Step Functions",
+              "StartAt": "LambdaPaso1",
+              "States": {
+                "LambdaPaso1": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "Parameters": {
+                    "FunctionName": "${Lambda01Arn}",
+                    "Payload": {}
+                  },
+                  "Next": "LambdaPaso2",
+                  "Catch": [
+                    {
+                      "ErrorEquals": ["States.ALL"],
+                      "ResultPath": "$.error",
+                      "Next": "Fallo"
+                    }
+                  ],
+                  "ResultPath": "$.Paso1Output"
+                },
+                "LambdaPaso2": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "Parameters": {
+                    "FunctionName": "${Lambda02Arn}",
+                    "Payload": {}
+                  },
+                  "Next": "LambdaPaso3",
+                  "Catch": [
+                    {
+                      "ErrorEquals": ["States.ALL"],
+                      "ResultPath": "$.error",
+                      "Next": "Fallo"
+                    }
+                  ],
+                  "ResultPath": "$.Paso2Output"
+                },
+                "LambdaPaso3": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "Parameters": {
+                    "FunctionName": "${Lambda03Arn}",
+                    "Payload": {}
+                  },
+                  "End": true,
+                  "Catch": [
+                    {
+                      "ErrorEquals": ["States.ALL"],
+                      "ResultPath": "$.error",
+                      "Next": "Fallo"
+                    }
+                  ],
+                  "ResultPath": "$.Paso3Output"
+                },
+                "Fallo": {
+                  "Type": "Fail",
+                  "Cause": "Falla en alguno de los pasos Lambda",
+                  "Error": "States.ALL"
+                }
+              }
+            }
+          - {
+              "Lambda01Arn": !GetAtt LambdaFunctionLab01.Arn,
+              "Lambda02Arn": !GetAtt LambdaFunctionLab02.Arn,
+              "Lambda03Arn": !GetAtt LambdaFunctionLab03.Arn
+            }
+
+Outputs:
+  StepFunctionsStateMachineName:
+    Description: "Nombre de la State Machine Step Functions"
+    Value: !Ref StepFunctionStateMachine
+
+  StepFunctionsStateMachineArn:
+    Description: "ARN de la State Machine Step Functions"
+    Value: !GetAtt StepFunctionStateMachine.Arn
