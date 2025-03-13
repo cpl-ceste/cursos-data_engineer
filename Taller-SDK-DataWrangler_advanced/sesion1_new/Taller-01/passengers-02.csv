@@ -1,0 +1,7 @@
+passenger_id,flight_number,name,nationality,fare
+1,AA101,John Doe,USA,300
+2,AA101,Jane Smith,UK,350
+3,AA102,Mike Brown,USA,250
+4,AA103,Alice Johnson,CAN,400
+5,AA103,David Wilson,AUS,420
+6,AA104,Emma Davis,USA,180
