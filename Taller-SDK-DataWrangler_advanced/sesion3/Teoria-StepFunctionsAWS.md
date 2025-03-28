@@ -109,7 +109,7 @@ Step Functions ofrece tres patrones para integrarse con otros servicios de AWS:
 
 En este ejercicio se descargará, compilará e implementará una AWS SAM aplicación de ejemplo que contiene una máquina de AWS Step Functions estados. Esta aplicación crea un flujo de trabajo bursátil simulado que se ejecuta en un horario predefinido.
 
-Enunciado: [Crear una maquina de estado](https://docs.aws.amazon.com/es_es/step-functions/latest/dg/tutorial-stock-trading-workflow.html)
+Enunciado: [Crear una maquina de estado](https://docs.aws.amazon.com/es_es/step-functions/latest/dg/tutorial-state-machine-using-sam.html)
 
 ### 2.4. Arquitectura que construiremos en el 2º ejercicio.
 
