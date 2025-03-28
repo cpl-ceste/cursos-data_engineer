@@ -786,7 +786,7 @@ Resources:
                   merged_df = pd.merge(merged_df, rating_avg, on="flight_number", how="left")
 
                   con = wr.redshift.connect_temp(
-                      cluster_identifier=REDSHIFT_CLUSTER, database="dev", user="awsuser"
+                      cluster_identifier=REDSHIFT_CLUSTER, database=REDSHIFT_DATABASE, user=REDSHIFT_USER
                   )
 
                   wr.redshift.copy(
@@ -921,6 +921,12 @@ Resources:
                       table=REDSHIFT_TABLE,
                       iam_role=os.environ["IAM_ROLE"],
                       mode="overwrite",
+                  )
+
+                  wr.s3.to_csv(
+                      df=flights_df,
+                      path=f"s3://{S3_BUCKET}/processed/.csv",
+                      index=False
                   )
 
                   return {
