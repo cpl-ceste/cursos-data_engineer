@@ -846,7 +846,7 @@ Resources:
       FunctionName: fn-training-activity-03
       Architectures:
         - arm64
-      Handler: lambda_function.lambda_handler
+      Handler: index.lambda_handler
       Runtime: python3.10
       Timeout: 180
       EphemeralStorage: 
@@ -925,7 +925,7 @@ Resources:
 
                   wr.s3.to_csv(
                       df=flights_df,
-                      path=f"s3://{S3_BUCKET}/processed/.csv",
+                      path=f"s3://{S3_BUCKET}/temp/flights_data_summary_lab.csv",
                       index=False
                   )
 
